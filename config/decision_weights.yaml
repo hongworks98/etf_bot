@@ -1,0 +1,109 @@
+# PortfolioDecisionEngine — 가중치 & 임계값 설정
+# 모든 점수는 0~100 기준, 높을수록 긍정적 신호
+
+# ─────────────────────────────────────────────
+# 1. BuyScore 가중치 (합계 = 1.0)
+# ─────────────────────────────────────────────
+buy_score_weights:
+  macro_score:    0.30   # 매크로 환경 지지 여부
+  trend_score:    0.20   # 기술적 추세 방향
+  etf_score:      0.20   # ETF 절대 품질
+  breadth_score:  0.15   # 시장 전반 강도
+  rs_score:       0.15   # 상대강도
+
+# ─────────────────────────────────────────────
+# 2. HoldScore 가중치 (합계 = 1.0)
+# ─────────────────────────────────────────────
+hold_score_weights:
+  macro_score:      0.25  # 매크로 지지
+  risk_score:       0.25  # 안전 환경 (높을수록 보유 유리)
+  trend_score:      0.20  # 추세 지속성
+  position_health:  0.15  # 현재 포지션 건전성
+  portfolio_fit:    0.15  # 목표 비중 적합성
+
+# ─────────────────────────────────────────────
+# 3. ExitScore 가중치 (합계 = 1.0, 높을수록 매도 신호)
+# ─────────────────────────────────────────────
+exit_score_weights:
+  risk_danger:       0.30  # (100 - risk_score)
+  trend_danger:      0.25  # (100 - trend_score)
+  macro_danger:      0.20  # (100 - macro_score)
+  drawdown_danger:   0.15  # 손실 심화 시 패널티
+  overweight_danger: 0.10  # 비중 초과 시 패널티
+
+# ─────────────────────────────────────────────
+# 4. OpportunityScore 가중치 (합계 = 1.0)
+# ─────────────────────────────────────────────
+opportunity_score_weights:
+  etf_score:      0.35  # ETF 절대 품질
+  macro_align:    0.25  # 현재 국면 추천 섹터 일치도
+  momentum_score: 0.20  # 모멘텀 강도
+  rs_score:       0.20  # 상대강도
+
+# ─────────────────────────────────────────────
+# 5. 의사결정 임계값
+# ─────────────────────────────────────────────
+thresholds:
+  # BuyScore 기준
+  strong_buy:     75    # buy_score > 75 → BUY (신규 강력)
+  buy:            60    # buy_score > 60 → BUY (신규)
+  add:            55    # buy_score > 55 + 보유 중 → ADD
+
+  # HoldScore 기준
+  hold_min:       45    # hold_score > 45 + exit_score < 60 → HOLD
+
+  # ExitScore 기준
+  trim:           60    # exit_score > 60 → TRIM
+  sell:           75    # exit_score > 75 → SELL
+
+  # 리스크 오버라이드 (무조건 적용)
+  risk_override_sell:  85   # exit_score > 85 → 즉시 SELL
+  risk_override_trim:  70   # exit_score > 70 → 즉시 TRIM
+
+# ─────────────────────────────────────────────
+# 6. 포트폴리오 제약 조건
+# ─────────────────────────────────────────────
+portfolio_constraints:
+  max_position_size:      0.30   # 단일 종목 최대 30%
+  max_sector_exposure:    0.40   # 섹터 최대 40%
+  default_position_size:  0.10   # 기본 매수 비중 10%
+  min_position_size:      0.03   # 최소 보유 비중 3% (미만 시 SELL 처리)
+  max_portfolio_positions: 10    # 최대 보유 종목 수
+  min_cash_pct:           0.05   # 최소 현금 비중 5%
+
+# ─────────────────────────────────────────────
+# 7. Position Health 계산 파라미터
+# ─────────────────────────────────────────────
+position_health:
+  pnl_multiplier: 2.0    # health = 50 + pnl_pct * multiplier
+  max_pnl_effect: 40.0   # 최대 ±40점 보정
+
+# ─────────────────────────────────────────────
+# 8. Macro Alignment 점수 (섹터 랭크 → 점수)
+# ─────────────────────────────────────────────
+macro_align_scores:
+  rank_1: 100
+  rank_2: 80
+  rank_3: 60
+  rank_4: 40
+  rank_5: 20
+  default: 0
+
+# ─────────────────────────────────────────────
+# 9. 신뢰도(Confidence) 계산 방식
+# ─────────────────────────────────────────────
+confidence:
+  # 4개 점수의 표준편차가 낮을수록 신뢰도 높음
+  max_std_dev: 30.0   # 이 이상이면 confidence = 0.5
+  min_std_dev: 5.0    # 이 이하면 confidence = 1.0
+
+# ─────────────────────────────────────────────
+# 10. Priority 기준 (낮을수록 우선)
+# ─────────────────────────────────────────────
+priority:
+  BUY:  1
+  ADD:  2
+  SELL: 3
+  TRIM: 4
+  HOLD: 5
+  WAIT: 9

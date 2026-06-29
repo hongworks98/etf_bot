@@ -1,0 +1,48 @@
+# config/app_config.yaml
+# DSS Dashboard — Application Configuration
+# 임계값, 알림 설정, 캐시 TTL 등 비즈니스 파라미터.
+# DataBridge가 이 파일의 값을 읽어 ViewData를 생성합니다.
+
+# ── 신뢰도 임계값 ──────────────────────────────────────────────────
+confidence:
+  very_high:  80.0   # >= 80 → "매우 높음"
+  high:       65.0   # >= 65 → "높음"
+  medium:     50.0   # >= 50 → "보통"
+  low:        35.0   # >= 35 → "낮음"
+                     # < 35  → "매우 낮음"
+
+# ── 리스크 임계값 ──────────────────────────────────────────────────
+risk:
+  max_drawdown_low:  0.10   # MDD < 10%  → 리스크 낮음
+  max_drawdown_high: 0.20   # MDD < 20%  → 리스크 보통 / >= 20% → 높음
+
+# ── 시장 건강 임계값 ───────────────────────────────────────────────
+market_health:
+  strong_threshold:  65.0   # >= 65 → 강세
+  neutral_threshold: 45.0   # >= 45 → 중립 / < 45 → 약세
+
+# ── RS 추천 임계값 ─────────────────────────────────────────────────
+rs_recommendation:
+  buy_threshold:   65.0   # RS >= 65 또는 top → "추천"
+  hold_threshold:  45.0   # RS >= 45 → "관찰" / < 45 → "회피"
+
+# ── 알림 설정 ──────────────────────────────────────────────────────
+alerts:
+  notify_on_action_change:    true
+  notify_on_high_confidence:  true
+  confidence_alert_threshold: 70.0
+
+# ── 캐시 설정 ──────────────────────────────────────────────────────
+cache:
+  ttl_seconds: 300    # Pipeline 재실행 간격 (5분)
+
+# ── Journal 설정 ───────────────────────────────────────────────────
+journal:
+  max_entries: 30     # 최대 보관 일수
+
+# ── Watchlist 기본값 ───────────────────────────────────────────────
+watchlist:
+  defaults:
+    - "XLK"
+    - "XLC"
+    - "XLY"

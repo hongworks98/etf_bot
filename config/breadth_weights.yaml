@@ -1,0 +1,96 @@
+# MarketBreadthEngine - Weights & Thresholds
+# All scores: 0~100, higher = healthier market breadth
+
+# ─────────────────────────────────────────
+# 1. Component Weights (sum = 1.0)
+# ─────────────────────────────────────────
+component_weights:
+  ad_ratio:        0.20   # Advance/Decline Ratio (10-day EMA)
+  ad_line_trend:   0.10   # Cumulative A/D Line slope direction
+  nh_nl_ratio:     0.15   # New High / New Low ratio
+  pct_above_20ma:  0.08   # % Stocks above 20-day MA  (short-term)
+  pct_above_50ma:  0.12   # % Stocks above 50-day MA  (medium-term)
+  pct_above_200ma: 0.18   # % Stocks above 200-day MA (long-term, most critical)
+  participation:   0.10   # Advancing Volume / Total Volume
+  breadth_thrust:  0.07   # Zweig Breadth Thrust (10-day EMA of AD ratio)
+
+# ─────────────────────────────────────────
+# 2. Normalization Ranges (raw → 0~100)
+# ─────────────────────────────────────────
+normalization:
+  ad_ratio:
+    lo: 35.0    # Below 35% = extreme bearish
+    hi: 65.0    # Above 65% = extreme bullish
+  ad_line_trend:
+    lo: -20.0   # Strongly falling
+    hi:  20.0   # Strongly rising
+  nh_nl_ratio:
+    lo: 20.0
+    hi: 80.0
+  pct_above_20ma:
+    lo: 25.0
+    hi: 75.0
+  pct_above_50ma:
+    lo: 25.0
+    hi: 75.0
+  pct_above_200ma:
+    lo: 25.0
+    hi: 75.0
+  participation:
+    lo: 35.0
+    hi: 65.0
+  breadth_thrust:
+    lo: 38.0    # Zweig: below 40% = oversold
+    hi: 63.0    # Zweig: above 61.5% = thrust signal
+
+# ─────────────────────────────────────────
+# 3. Health Level Thresholds
+# ─────────────────────────────────────────
+health_thresholds:
+  excellent:  75.0   # breadth_score >= 75 → Excellent
+  healthy:    55.0   # breadth_score >= 55 → Healthy
+  weakening:  35.0   # breadth_score >= 35 → Weakening
+  # below 35 → Critical
+
+# ─────────────────────────────────────────
+# 4. Divergence Detection Parameters
+# ─────────────────────────────────────────
+divergence:
+  lookback_days: 20          # 비교 기간 (거래일)
+  index_move_threshold: 2.0  # % 이상 지수 변화
+  breadth_move_threshold: 5.0 # pt 이상 AD Ratio 변화
+  strong_threshold: 50.0     # divergence strength >= 50 = strong signal
+
+# ─────────────────────────────────────────
+# 5. Trend Analysis Parameters
+# ─────────────────────────────────────────
+trend:
+  period_1m: 21     # 1개월 = 21 거래일
+  period_3m: 63     # 3개월 = 63 거래일
+  period_6m: 126    # 6개월 = 126 거래일
+  acceleration_weight: 0.3   # acceleration의 trend_score 반영 비중
+  slope_normalize_lo: -3.0   # 기울기 정규화 하한 (점/일)
+  slope_normalize_hi:  3.0   # 기울기 정규화 상한 (점/일)
+
+# ─────────────────────────────────────────
+# 6. Breadth Thrust (Zweig) Parameters
+# ─────────────────────────────────────────
+breadth_thrust:
+  ema_period:          10    # 10-day EMA
+  thrust_signal_hi:    61.5  # EMA > 61.5% = thrust confirmed
+  thrust_signal_lo:    40.0  # EMA < 40.0% = oversold
+  thrust_lookback:     10    # 10일 내 lo→hi 이동 확인
+
+# ─────────────────────────────────────────
+# 7. Confidence Calculation
+# ─────────────────────────────────────────
+confidence:
+  min_history_days:    10    # 최소 데이터 (이하면 confidence 낮음)
+  full_history_days:   63    # 이 이상이면 data_factor = 1.0
+  variance_penalty:    0.5   # std_dev가 클수록 신뢰도 감소 계수
+
+# ─────────────────────────────────────────
+# 8. EMA (Exponential Moving Average) Parameters
+# ─────────────────────────────────────────
+ema:
+  ad_ratio_period: 10   # AD Ratio smoothing

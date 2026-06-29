@@ -1,0 +1,201 @@
+# ============================================================
+# PortfolioOptimizationEngine — Weight & Constraint Config
+# ============================================================
+
+# ----- Signal Score Weights -----
+signal_weights:
+  rs_score:        0.30
+  rotation_score:  0.25
+  conviction_score: 0.20
+  macro_alignment: 0.15
+  breadth_score:   0.10
+
+# Macro alignment bonus/penalty
+macro_alignment_scores:
+  aligned_strong:   100.0
+  aligned_neutral:   65.0
+  misaligned_strong: 25.0
+  misaligned_neutral: 45.0
+  unknown:           50.0
+
+expected_leaders:
+  Recovery:      ["XLF", "XLY", "XLI", "XLK"]
+  Expansion:     ["XLK", "XLC", "XLY", "XLF"]
+  Overheating:   ["XLE", "XLB", "XLI", "XLF"]
+  Slowdown:      ["XLP", "XLU", "XLV", "XLB"]
+  Recession:     ["XLU", "XLP", "XLV"]
+  EarlyRecovery: ["XLF", "XLK", "XLY"]
+  Unknown:       []
+
+# ----- Dynamic Regime Engine -----
+regime:
+  aggressive_states: ["Recovery", "Expansion"]
+  defensive_states:  ["Recession", "Slowdown"]
+  aggressive_health_min: 60.0
+  aggressive_vix_max:    25.0
+  defensive_health_max:  40.0
+  defensive_vix_min:     35.0
+
+# Sector categories (for regime template)
+sector_categories:
+  cyclical:   ["XLK", "XLC", "XLY", "XLF", "XLI", "XLE", "XLB"]
+  defensive:  ["XLP", "XLU", "XLV", "XLRE"]
+
+# Regime allocation templates (per-ticker base weight)
+# Keys must cover all possible target_tickers
+regime_templates:
+  Aggressive:
+    XLK:  0.22
+    XLC:  0.10
+    XLY:  0.12
+    XLF:  0.12
+    XLI:  0.10
+    XLE:  0.08
+    XLB:  0.06
+    XLV:  0.06
+    XLP:  0.05
+    XLU:  0.04
+    XLRE: 0.05
+    default_cyclical:  0.09   # fallback for unknown cyclical tickers
+    default_defensive: 0.05   # fallback for unknown defensive tickers
+    default_unknown:   0.07
+  Balanced:
+    XLK:  0.15
+    XLC:  0.09
+    XLY:  0.09
+    XLF:  0.09
+    XLI:  0.08
+    XLE:  0.07
+    XLB:  0.07
+    XLV:  0.09
+    XLP:  0.09
+    XLU:  0.09
+    XLRE: 0.09
+    default_cyclical:  0.08
+    default_defensive: 0.08
+    default_unknown:   0.08
+  Defensive:
+    XLK:  0.08
+    XLC:  0.06
+    XLY:  0.07
+    XLF:  0.07
+    XLI:  0.06
+    XLE:  0.05
+    XLB:  0.05
+    XLV:  0.14
+    XLP:  0.14
+    XLU:  0.14
+    XLRE: 0.14
+    default_cyclical:  0.05
+    default_defensive: 0.12
+    default_unknown:   0.08
+
+# ----- Target Allocation -----
+allocation:
+  max_signal_adj_pct: 0.40    # signal can move weight by up to ±40% of base
+  min_weight:         0.02    # minimum position size (2%)
+  max_weight:         0.35    # maximum single ETF (35%)
+  min_positions:      4       # minimum number of holdings
+  max_positions:      11      # maximum number of ETF holdings
+  rebalance_threshold: 0.03   # minimum delta to include a trade suggestion
+
+# ----- Cash Recommendation -----
+cash:
+  base_cash:          0.03    # 3% baseline cash
+  vix_cash_add:       0.05    # +5% when VIX > threshold
+  macro_cash_add:     0.05    # +5% for defensive macro
+  health_cash_add:    0.04    # +4% when health < threshold
+  breadth_cash_add:   0.03    # +3% when breadth < threshold
+  vix_high:           30.0
+  health_low:         40.0
+  breadth_low:        40.0
+  cash_min:           0.02
+  cash_max:           0.25
+
+# ----- Risk Budget -----
+risk_budget:
+  use_equal_risk:     true    # equal risk contribution target
+  min_history_days:   20      # minimum days to compute covariance
+  annualize_factor:   252
+  risk_free_rate:     0.045   # 4.5% (US T-bill proxy)
+
+# ----- Diversification -----
+diversification:
+  excellent_threshold: 80.0
+  good_threshold:      60.0
+  fair_threshold:      40.0
+
+# ----- Concentration -----
+concentration:
+  high_hhi:    0.20    # HHI > 0.20 → concentrated
+  extreme_hhi: 0.30    # HHI > 0.30 → extreme concentration
+
+# ----- Correlation -----
+correlation:
+  high_corr_threshold:    0.80
+  extreme_corr_threshold: 0.90
+  min_history_days:       20
+
+# ----- Position Sizing -----
+position_sizing:
+  min_trade_value:   500.0     # minimum $ trade size
+  round_shares:      true
+  price_fallback:    100.0     # assumed price if no data
+
+# ----- Scenario Analysis -----
+scenarios:
+  bull:
+    rs_shock:         15.0
+    rotation_shock:   10.0
+    breadth_shock:    10.0
+    vix_shock:        -5.0
+    return_premium:   0.05    # annualized alpha premium
+  bear:
+    rs_shock:        -20.0
+    rotation_shock:  -15.0
+    breadth_shock:   -20.0
+    vix_shock:        20.0
+    return_penalty:  -0.08
+  base:
+    rs_shock:         0.0
+    rotation_shock:   0.0
+    breadth_shock:    0.0
+    vix_shock:        0.0
+    return_premium:   0.0
+
+# ----- Monte Carlo -----
+monte_carlo:
+  n_simulations:   500
+  n_days:          252        # 1 year
+  percentiles:     [5, 25, 50, 75, 95]
+  min_history_days: 30
+
+# ----- Rebalancing -----
+rebalancing:
+  immediate_threshold:    0.10   # 10%+ delta
+  this_week_threshold:    0.05
+  this_month_threshold:   0.02
+  daily_alpha_estimate:   0.0003 # 3 bps/day opportunity cost
+  transaction_cost_pct:   0.001  # 0.1% round-trip
+
+# ----- Adaptive Allocation -----
+adaptive:
+  max_risk_budget_overshoot: 20.0   # % above target triggers reduction
+  convergence_iterations: 3
+
+# ----- Dashboard Colors -----
+dashboard:
+  colors:
+    aggressive: "#E74C3C"
+    balanced:   "#F39C12"
+    defensive:  "#27AE60"
+    cash:       "#95A5A6"
+    increase:   "#1A7C4E"
+    decrease:   "#C0392B"
+    neutral:    "#7F8C8D"
+  gauge_bands:
+    excellent: [80, 100, "#27AE60"]
+    good:      [60,  80, "#2ECC71"]
+    fair:      [40,  60, "#F39C12"]
+    poor:      [20,  40, "#E74C3C"]
+    critical:  [ 0,  20, "#8B0000"]

@@ -1,0 +1,214 @@
+# ============================================================
+# RotationSignalEngine — Weight & Threshold Configuration
+# ============================================================
+
+# ----- Rotation Score Weights -----
+rotation_score_weights:
+  rs_momentum:    0.28
+  macro_align:    0.22
+  breadth_supp:   0.18
+  capital_flow:   0.15
+  trend_strength: 0.10
+  risk_inverse:   0.07
+
+# Normalize RS rank-change × acceleration to 0~100
+rs_momentum_normalize:
+  lo: -10.0
+  hi:  10.0
+
+# Breadth: (breadth_score - 50) × scale → 0~100
+breadth_scale: 2.0
+
+# Trend strength penalty when ETF is below 200MA
+below_200ma_penalty: 0.60
+
+# ----- Macro Alignment Scores (→ 0~100) -----
+macro_alignment:
+  expected_and_strong:  100.0
+  expected_and_neutral:  65.0
+  unexpected_strong:     25.0
+  unexpected_neutral:    45.0
+  unknown_macro:         50.0
+  # Same map as rs_weights.yaml expected_leaders
+  expected_leaders:
+    Recovery:      ["XLF", "XLY", "XLI", "XLK"]
+    Expansion:     ["XLK", "XLC", "XLY", "XLF"]
+    Overheating:   ["XLE", "XLB", "XLI", "XLF"]
+    Slowdown:      ["XLP", "XLU", "XLV", "XLB"]
+    Recession:     ["XLU", "XLP", "XLV"]
+    EarlyRecovery: ["XLF", "XLK", "XLY"]
+    Unknown:       []
+
+# ----- Capital Flow Calculator -----
+capital_flow:
+  mfi_period: 14
+  volume_window_short: 10    # recent vol window (days)
+  volume_window_long:  60    # baseline vol window (days)
+  mfi_normalize_lo: 20.0
+  mfi_normalize_hi: 80.0
+  vol_ratio_normalize_lo: 0.50
+  vol_ratio_normalize_hi: 2.00
+  weights:
+    mfi:      0.35
+    volume:   0.35
+    etf_flow: 0.30
+
+# ----- Lifecycle State Machine -----
+lifecycle:
+  emerging_max_score:   45.0
+  emerging_max_days:    5
+  building_max_score:   62.0
+  building_max_days:    15
+  confirmed_min_score:  62.0
+  confirmed_min_days:   15
+  mature_min_score:     75.0
+  weakening_drop:       8.0      # score dropped by this much from recent peak
+  reversing_threshold:  30.0
+
+# ----- Lifecycle Bonus for Conviction -----
+lifecycle_bonus:
+  CONFIRMED:  80.0
+  MATURE:     70.0
+  BUILDING:   60.0
+  EMERGING:   40.0
+  WEAKENING:  30.0
+  REVERSING:  10.0
+
+# ----- Conviction Calculator -----
+conviction:
+  weights:
+    rotation_score: 0.30
+    confidence:     0.25
+    lifecycle:      0.20
+    opportunity:    0.15
+    timing:         0.10
+  # Conviction levels
+  immediate_threshold: 90.0
+  gradual_threshold:   75.0
+  watchlist_threshold: 60.0
+  observe_threshold:   40.0
+  # Timing factor scores
+  timing_scores:
+    NOW:        100.0
+    THIS_WEEK:   70.0
+    THIS_MONTH:  50.0
+    WAIT:        20.0
+
+# ----- Opportunity Calculator -----
+opportunity:
+  weights:
+    rs_gap:         0.40
+    conviction_gap: 0.30
+    persistence_gap: 0.20
+    cost_adj:       0.10
+  min_rs_gap_to_act: 15.0   # minimum RS score gap to consider opportunity
+
+# ----- False Rotation Detection -----
+false_rotation:
+  spike_sigma:           2.0    # |score_change_3d| > N × std → spike
+  spike_window_days:     30     # std calculation window
+  spike_change_days:     3      # how many days to look at for rapid change
+  volume_spike_ratio:    3.0    # volume > N × baseline → spike
+  volume_follow_days:    3      # days to check for follow-through
+  min_persistence_days:  3      # below this → false rotation
+
+# ----- Rotation Attribution Weights -----
+# Used for converting score components → % attribution
+attribution_factors:
+  - "Relative Strength"
+  - "Macro Regime"
+  - "Market Breadth"
+  - "Capital Flow"
+  - "Trend"
+  - "Risk/VIX"
+
+# ----- Rotation Forecast -----
+forecast:
+  leading_indicators_weight:
+    rs_acceleration:    0.30
+    macro_cycle_phase:  0.25
+    breadth_trend:      0.20
+    capital_momentum:   0.15
+    vix_trend:          0.10
+  forecast_horizon_days: 30
+
+# ----- Rotation Timing Rules -----
+timing:
+  now_min_conviction:       75.0
+  now_min_stage:            "CONFIRMED"   # stage must be >= CONFIRMED
+  this_week_min_conviction: 60.0
+  this_week_min_stage:      "BUILDING"
+  this_month_min_forecast:  60.0
+  # Below this conviction → WAIT
+  wait_conviction_threshold: 60.0
+
+# ----- Rotation Risk -----
+rotation_risk:
+  weights:
+    vix_risk:           0.30
+    breadth_divergence: 0.25
+    macro_misalign:     0.20
+    speed_risk:         0.15
+    stage_risk:         0.10
+  vix_high_threshold: 30.0      # VIX > 30 → elevated risk
+  vix_extreme_threshold: 40.0   # VIX > 40 → extreme risk
+  vix_normalize_lo: 10.0
+  vix_normalize_hi: 50.0
+  breadth_divergence_threshold: 15.0  # points
+
+# ----- Rotation Strength Thresholds -----
+rotation_strength:
+  extreme:  85.0
+  strong:   65.0
+  moderate: 45.0
+  # below moderate → WEAK
+
+# ----- Rotation Speed -----
+rotation_speed:
+  rapid:    80.0   # score_change_per_day > this (normalized)
+  fast:     60.0
+  moderate: 40.0
+  # below → SLOW
+  lookback_days: 7   # days to measure speed over
+
+# ----- Rotation Direction Detection -----
+rotation_direction:
+  into_threshold:  65.0   # rotation_score ≥ this → capital flowing IN
+  out_threshold:   35.0   # rotation_score ≤ this → capital flowing OUT
+  min_confidence:  0.60
+
+# ----- Persistence Calculation -----
+persistence:
+  score_threshold: 50.0   # days above this threshold count as "active rotation"
+
+# ----- Cost Analysis -----
+cost_analysis:
+  default_spread_pct: 0.001    # 0.1% round-trip transaction cost
+  slippage_pct:       0.0005   # 0.05% slippage
+  short_term_tax_rate: 0.154   # Korea: 15.4% (default)
+  daily_alpha_est:    0.0003   # assumed daily alpha for breakeven calc
+
+# ----- Rotation Confidence -----
+confidence:
+  # How many signals point the same direction?
+  signal_weights:
+    rs_aligned:      0.25
+    macro_aligned:   0.25
+    breadth_aligned: 0.20
+    trend_aligned:   0.15
+    flow_aligned:    0.15
+  high_confidence_threshold: 70.0
+  low_confidence_threshold:  40.0
+
+# ----- Dashboard Colors -----
+dashboard:
+  heatmap_colors:
+    extreme:  "#8B0000"   # dark red
+    strong:   "#E74C3C"   # red
+    moderate: "#F39C12"   # orange
+    weak:     "#27AE60"   # green
+    none:     "#2ECC71"   # bright green
+  flow_colors:
+    inflow:   "#1A7C4E"
+    outflow:  "#C0392B"
+    neutral:  "#7F8C8D"

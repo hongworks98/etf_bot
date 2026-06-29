@@ -1,0 +1,47 @@
+# DSS Decision Support System — Dependencies
+# Python 3.12 기준
+# pip install -r requirements.txt
+
+# ════════════════════════════════════════════════
+# 필수 (Required)
+# ════════════════════════════════════════════════
+
+# 웹 대시보드
+streamlit>=1.35.0
+
+# Engine config 파일 로딩 (engines/ 5개 Engine에서 사용)
+PyYAML>=6.0.1
+
+# ════════════════════════════════════════════════
+# 선택 권장 (Recommended — 없어도 실행됨)
+# ════════════════════════════════════════════════
+
+# 차트 (포트폴리오 파이 차트 등 — 없으면 텍스트 폴백)
+plotly>=5.20.0
+
+# Engine Monitor CPU/메모리 측정 (없으면 tracemalloc 폴백)
+psutil>=5.9.0
+
+# ════════════════════════════════════════════════
+# 향후 실시간 데이터 연동 시 활성화
+# ════════════════════════════════════════════════
+# yfinance>=0.2.38          # 실시간 주가 데이터
+# pandas>=2.2.0             # 데이터 프레임
+# numpy>=1.26.0             # 수치 연산
+# requests>=2.31.0          # HTTP API 클라이언트
+
+# ════════════════════════════════════════════════
+# 개발 도구 (개발 환경에서만)
+# ════════════════════════════════════════════════
+# pytest>=8.0.0             # 테스트
+# black>=24.0.0             # 코드 포맷
+# mypy>=1.9.0               # 타입 체크
+
+# ════════════════════════════════════════════════
+# 표준 라이브러리 (별도 설치 불필요)
+# ════════════════════════════════════════════════
+# math, random, dataclasses, enum, typing, json,
+# logging, time, datetime, traceback, tracemalloc,
+# contextlib, abc, collections, functools, itertools,
+# pathlib, io, copy, os, sys, re, ast, tempfile,
+# shutil, glob, struct, warnings, gc, weakref

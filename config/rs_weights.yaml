@@ -1,0 +1,112 @@
+# ============================================================
+# RelativeStrengthEngine — Weight & Threshold Configuration
+# ============================================================
+
+# ----- Multi-Timeframe RS Weights -----
+timeframe_weights:
+  "1M": 0.30
+  "3M": 0.30
+  "6M": 0.25
+  "12M": 0.15
+
+# Normalize relative_return (%) to 0~100
+timeframe_normalize:
+  lo: -20.0   # -20% relative under-performance → score 0
+  hi:  20.0   #  +20% relative out-performance  → score 100
+
+# ----- RS Trend Weights -----
+trend:
+  slope_window_1m: 21    # trading days
+  slope_window_3m: 63
+  slope_normalize_lo: -2.0   # daily RS unit change
+  slope_normalize_hi:  2.0
+  acceleration_weight: 0.30  # blend: 70% slope + 30% acceleration
+  direction_rising_threshold:  0.1
+  direction_falling_threshold: -0.1
+
+# ----- Persistence Calculator -----
+persistence:
+  weekly_period: 52          # look-back weeks
+  streak_normalize_lo: 0.0
+  streak_normalize_hi: 20.0  # 20 consecutive positive-RS weeks → max bonus
+  score_weights:
+    positive_pct: 0.60
+    streak_bonus: 0.40
+
+# ----- Quality Calculator -----
+quality:
+  score_weights:
+    consistency:   0.30
+    volatility:    0.25
+    participation: 0.20
+    persistence:   0.25
+  consistency_normalize_lo: 0.0    # std of TF rs_scores
+  consistency_normalize_hi: 30.0
+  volatility_normalize_lo:  0.50   # SPY_vol / ETF_vol
+  volatility_normalize_hi:  2.00
+  participation_normalize_lo: 0.40 # advancing volume ratio on ETF up-days
+  participation_normalize_hi: 0.70
+
+# ----- Final RS Score -----
+rs_score_weights:
+  composite_rs:   0.50
+  trend_score:    0.20
+  persistence:    0.15
+  quality_score:  0.15
+
+# ----- Leadership Classification -----
+leadership:
+  leader_rs_threshold:   65.0
+  laggard_rs_threshold:  35.0
+  leader_rank_top_pct:   0.333   # top 1/3 of ranked sectors
+  laggard_rank_bot_pct:  0.667   # bottom 1/3
+
+# ----- Ranking Engine -----
+ranking:
+  rank_jump_threshold: 3   # |rank_change| >= 3 → rank_jump = True
+
+# ----- Rotation Readiness -----
+rotation_readiness:
+  weights:
+    rank_momentum:   0.35
+    trend_accel:     0.30
+    persistence_d:   0.20
+    breadth_bonus:   0.15
+  rank_momentum_normalize_lo: -5.0
+  rank_momentum_normalize_hi:  5.0
+  trend_accel_normalize_lo:   -2.0
+  trend_accel_normalize_hi:    2.0
+  persistence_d_normalize_lo: -10.0
+  persistence_d_normalize_hi:  10.0
+  breadth_sensitivity: 0.30   # multiplier on (breadth_score - 50)
+
+# ----- Macro Validator -----
+macro_validator:
+  expected_leaders:
+    Recovery:      ["XLF", "XLY", "XLI", "XLK"]
+    Expansion:     ["XLK", "XLC", "XLY", "XLF"]
+    Overheating:   ["XLE", "XLB", "XLI", "XLF"]
+    Slowdown:      ["XLP", "XLU", "XLV", "XLB"]
+    Recession:     ["XLU", "XLP", "XLV"]
+    EarlyRecovery: ["XLF", "XLK", "XLY"]
+    Unknown:       []
+  alignment_score_map:
+    expected_and_leading:     100.0
+    expected_not_leading:      50.0
+    unexpected_leading:        30.0
+    unexpected_not_leading:    60.0  # fine — not leading when not expected
+
+# ----- Heatmap Color Palette -----
+heatmap:
+  colors:
+    excellent: "#1a7c4e"   # rs_score >= 75
+    strong:    "#2ecc71"   # rs_score >= 60
+    neutral:   "#f39c12"   # rs_score >= 40
+    weak:      "#e74c3c"   # rs_score >= 25
+    critical:  "#8e1a0e"   # rs_score <  25
+
+# ----- Confidence Calculation -----
+confidence:
+  min_history_days: 63     # need at least 3M history for reliable signal
+  full_history_days: 252   # 12M history → max confidence from data length
+  persistence_weight: 0.20 # contribution of persistence quality to confidence

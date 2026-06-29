@@ -1,0 +1,83 @@
+# ════════════════════════════════════════════════════
+# DSS Decision Support System — .gitignore
+# ════════════════════════════════════════════════════
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+.Python
+
+# 가상 환경
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 환경 변수 (API 키 등 — 절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# 로그
+*.log
+logs/
+dss_integration/logs/
+
+# 런타임 데이터 (사용자 데이터 — 커밋 불필요)
+web/data/journal.json
+web/data/watchlist.json
+phase_history.json
+
+# 레거시 파일 (참고용만, 실행 불필요)
+dashboard.py
+dashboard_copy.py
+dashboard_v2.py
+dss_engines.py
+macro_bot.py
+kis_api.py
+colab_run.ipynb
+배포_가이드.md
+
+# 설계 문서 (선택적 — 커밋해도 무방)
+# DSS_*.md
+# *_Design.md
+
+# OS
+Thumbs.db
+.DS_Store
