@@ -1,6 +1,6 @@
 """
 web/components/diagnostics.py
-🔧 Diagnostics 탭 — 시스템 진단 정보
+Diagnostics 탭 — 시스템 진단 정보
 UI renders only — no calculations.
 모든 데이터는 DataBridge.diagnostics_data()에서 온다.
 """
@@ -22,7 +22,7 @@ def render(data: DiagnosticsViewData) -> None:
 # ── System Info ───────────────────────────────────────────────────────────────
 
 def _system_info(d: DiagnosticsViewData) -> None:
-    st.markdown('<div class="section-hdr">🖥️ 시스템 정보</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">시스템 정보</div>', unsafe_allow_html=True)
     st.markdown(f"""
 <div class="metric-grid">
   <div class="metric-cell">
@@ -48,10 +48,10 @@ def _system_info(d: DiagnosticsViewData) -> None:
 # ── Config Status ─────────────────────────────────────────────────────────────
 
 def _config_status(d: DiagnosticsViewData) -> None:
-    st.markdown('<div class="section-hdr">⚙️ 설정 파일 상태</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">설정 파일 상태</div>', unsafe_allow_html=True)
 
     def _row(label: str, loaded: bool) -> str:
-        icon  = "✅" if loaded else "⚠️"
+        icon  = "OK" if loaded else "WARN"
         state = "로드됨" if loaded else "기본값 사용"
         color = BUY_COLOR if loaded else HOLD_COLOR
         return (f'<div style="display:flex;justify-content:space-between;align-items:center;'
@@ -59,8 +59,10 @@ def _config_status(d: DiagnosticsViewData) -> None:
                 f'<span style="color:{MUTED_COLOR};font-family:monospace;">{label}</span>'
                 f'<span style="font-weight:600;color:{color};">{icon} {state}</span></div>')
 
-    theme_row = _row("config/theme.yaml",      d.theme_config_loaded)
-    app_row   = _row("config/app_config.yaml", d.app_config_loaded)
+    theme_row = _row("config/theme.yaml", d.theme_config_loaded)
+
+    app_color = '#22c55e' if d.app_config_loaded else '#f97316'
+    app_state = 'OK 로드됨' if d.app_config_loaded else 'WARN 기본값 사용'
 
     st.markdown(f"""
 <div class="dss-card" style="padding:4px 16px;">
@@ -68,9 +70,7 @@ def _config_status(d: DiagnosticsViewData) -> None:
   <div style="display:flex;justify-content:space-between;align-items:center;
               padding:8px 0;font-size:13px;">
     <span style="color:{MUTED_COLOR};font-family:monospace;">config/app_config.yaml</span>
-    <span style="font-weight:600;color:{"#22c55e" if d.app_config_loaded else "#f97316"};">
-      {"✅ 로드됨" if d.app_config_loaded else "⚠️ 기본값 사용"}
-    </span>
+    <span style="font-weight:600;color:{app_color};">{app_state}</span>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;
               padding:8px 0;font-size:13px;">
@@ -84,17 +84,17 @@ def _config_status(d: DiagnosticsViewData) -> None:
 # ── Pipeline Status ───────────────────────────────────────────────────────────
 
 def _pipeline_status(d: DiagnosticsViewData) -> None:
-    st.markdown('<div class="section-hdr">🔗 Pipeline 상태</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Pipeline 상태</div>', unsafe_allow_html=True)
 
     if d.all_success:
         status_color = BUY_COLOR
-        status_text  = "✅ 정상"
+        status_text  = "OK 정상"
     elif d.failed_engines:
         status_color = SELL_COLOR
-        status_text  = "❌ 오류"
+        status_text  = "ERR 오류"
     else:
         status_color = INFO_COLOR
-        status_text  = "ℹ️ 데모 모드"
+        status_text  = "INFO 데모 모드"
 
     failed_html = ""
     if d.failed_engines:
@@ -102,6 +102,9 @@ def _pipeline_status(d: DiagnosticsViewData) -> None:
         failed_html = (f'<div style="font-size:12px;color:{SELL_COLOR};'
                        f'margin-top:6px;padding-top:6px;border-top:1px solid {BORDER_COLOR};">'
                        f'실패 Engine: {failed_list}</div>')
+
+    last_update = d.last_update or "N/A"
+    run_id      = d.run_id or "N/A"
 
     st.markdown(f"""
 <div class="dss-card">
@@ -117,12 +120,12 @@ def _pipeline_status(d: DiagnosticsViewData) -> None:
   <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;
               border-top:1px solid {BORDER_COLOR};">
     <span style="color:{MUTED_COLOR};">마지막 실행</span>
-    <span>{d.last_update or "N/A"}</span>
+    <span>{last_update}</span>
   </div>
   <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;
               border-top:1px solid {BORDER_COLOR};">
     <span style="color:{MUTED_COLOR};">Run ID</span>
-    <span style="font-family:monospace;font-size:12px;">{d.run_id or "N/A"}</span>
+    <span style="font-family:monospace;font-size:12px;">{run_id}</span>
   </div>
   {failed_html}
 </div>
@@ -133,21 +136,20 @@ def _pipeline_status(d: DiagnosticsViewData) -> None:
 
 def render_op_check(data: DailyOpCheckViewData) -> None:
     """운영 체크리스트 — Diagnostics 탭 하단에 렌더링."""
-    st.markdown('<div class="section-hdr">☑️ Daily Operation Checklist</div>',
+    st.markdown('<div class="section-hdr">Daily Operation Checklist</div>',
                 unsafe_allow_html=True)
 
-    # 요약 헤더
     if data.all_ok:
         summary_color = BUY_COLOR
-        summary_text  = f"✅ 모든 항목 정상 ({data.ok_count}/{data.total})"
+        summary_text  = f"OK 모든 항목 정상 ({data.ok_count}/{data.total})"
+        summary_bg    = "#f0fdf4"
     else:
         summary_color = HOLD_COLOR
-        summary_text  = f"⚠️ {data.ok_count}/{data.total}개 정상 — {data.total - data.ok_count}개 확인 필요"
+        summary_text  = f"WARN {data.ok_count}/{data.total}개 정상 — {data.total - data.ok_count}개 확인 필요"
+        summary_bg    = "#fffbeb"
 
-    # 체크리스트 행 HTML 생성
     rows_html = ""
     for item in data.items:
-        ok_color = BUY_COLOR if item.ok else HOLD_COLOR
         rows_html += f"""
 <div class="op-check-row">
   <div>
@@ -159,7 +161,7 @@ def render_op_check(data: DailyOpCheckViewData) -> None:
 
     st.markdown(f"""
 <div style="margin-bottom:8px;padding:8px 14px;border-radius:8px;
-            background:{"#f0fdf4" if data.all_ok else "#fffbeb"};
+            background:{summary_bg};
             font-size:13px;font-weight:700;color:{summary_color};">
   {summary_text}
 </div>
@@ -169,4 +171,4 @@ def render_op_check(data: DailyOpCheckViewData) -> None:
 <div style="font-size:11px;color:{MUTED_COLOR};margin-top:4px;text-align:right;">
   마지막 확인: {data.last_check}
 </div>
-""", un
+""", unsafe_allow_html=True)
