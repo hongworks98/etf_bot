@@ -47,7 +47,7 @@ log = logging.getLogger("web.app")
 
 # ── Pipeline Runner ───────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_resource(ttl=300, show_spinner=False)
 def _run_pipeline() -> object:
     """
     DSS Integration Layer 실행 → DSSResult 반환.
