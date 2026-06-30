@@ -33,8 +33,8 @@ FRED_SERIES = {
     "vix":           "VIXCLS",            # VIX
     "rate_10y":      "DGS10",             # 10년물 금리 (%)
     "oil_price":     "DCOILWTICO",        # WTI 원유 ($/배럴)
-    "gold_price":    "GOLDPMGBD228NLBM",  # 런던 금 PM 고시가 ($/온스)
     "dollar_index":  "DTWEXBGS",          # 달러 인덱스
+    # gold_price → yfinance GC=F 로 수집 (FRED 시리즈 중단)
 }
 
 
@@ -53,7 +53,7 @@ class LiveDataLoader(AbstractDataLoader):
 
         fred_raw    = self._fetch_fred_all()
         macro_ind   = self._normalize_macro(fred_raw)
-        prices      = self._fetch_prices()
+        prices, gold_price = self._fetch_prices()
         breadth_ind = self._calc_breadth(prices)
 
         log.info(f"LiveDataLoader: 완료 — macro={len(macro_ind)}, tickers={len(prices)}")
@@ -69,7 +69,7 @@ class LiveDataLoader(AbstractDataLoader):
             rate_10y     = fred_raw.get("rate_10y",      4.2),
             dollar_index = fred_raw.get("dollar_index", 103.0),
             oil_price    = fred_raw.get("oil_price",     78.0),
-            gold_price   = fred_raw.get("gold_price",  1950.0),
+            gold_price   = gold_price,
         )
 
     # ── FRED ──────────────────────────────────────────────────────────
@@ -139,55 +139,67 @@ class LiveDataLoader(AbstractDataLoader):
 
     # ── 가격 데이터 (yfinance 우선, AV 폴백) ──────────────────────────
 
-    def _fetch_prices(self) -> Dict[str, List[float]]:
+    def _fetch_prices(self) -> tuple:
+        """(prices dict, gold_price float) 반환."""
         global _price_cache, _price_cache_ts
 
         if _price_cache and (time.time() - _price_cache_ts) < PRICE_CACHE_TTL:
             log.info("LiveDataLoader: 가격 캐시 사용 (24h TTL)")
-            return _price_cache
+            gold = _price_cache.pop("__gold__", 1950.0)
+            _price_cache["__gold__"] = gold
+            return {k: v for k, v in _price_cache.items() if k != "__gold__"}, gold
 
-        prices = self._fetch_yfinance()
+        prices, gold_price = self._fetch_yfinance()
 
         if not prices and self._av_key:
             log.warning("yfinance 실패 — Alpha Vantage 폴백 시도")
             prices = self._fetch_av_prices()
 
         if prices:
-            _price_cache    = prices
+            _price_cache = {**prices, "__gold__": gold_price}
             _price_cache_ts = time.time()
 
-        return prices
+        return prices, gold_price
 
-    def _fetch_yfinance(self) -> Dict[str, List[float]]:
-        """yfinance로 ETF 가격 일괄 수집 (무료, 속도 제한 없음)."""
+    def _fetch_yfinance(self) -> tuple:
+        """yfinance로 ETF + 금값 수집. (prices dict, gold_price) 반환."""
         try:
             import yfinance as yf
-            all_tickers = SECTOR_TICKERS + BENCHMARK_TICKERS
+            all_tickers = SECTOR_TICKERS + BENCHMARK_TICKERS + ["GC=F"]
             symbols = " ".join(all_tickers)
             data = yf.download(symbols, period="1y", auto_adjust=True,
                                progress=False, threads=True)
 
             if data.empty:
-                return {}
+                return {}, 1950.0
 
             prices: Dict[str, List[float]] = {}
             close = data["Close"] if "Close" in data.columns else data
 
-            for ticker in all_tickers:
+            # ETF 가격
+            for ticker in SECTOR_TICKERS + BENCHMARK_TICKERS:
                 if ticker in close.columns:
                     series = close[ticker].dropna().tolist()
                     if series:
                         prices[ticker] = [round(p, 4) for p in series]
 
-            log.info(f"yfinance: {len(prices)}개 티커 로드 완료")
-            return prices
+            # 금 선물 최신가
+            gold_price = 1950.0
+            if "GC=F" in close.columns:
+                gold_series = close["GC=F"].dropna().tolist()
+                if gold_series:
+                    gold_price = round(gold_series[-1], 2)
+                    log.info(f"yfinance 금값: ${gold_price}")
+
+            log.info(f"yfinance: {len(prices)}개 ETF 티커 로드 완료")
+            return prices, gold_price
 
         except ImportError:
             log.warning("yfinance 미설치")
-            return {}
+            return {}, 1950.0
         except Exception as e:
             log.warning(f"yfinance 오류: {e}")
-            return {}
+            return {}, 1950.0
 
     def _fetch_av_prices(self) -> Dict[str, List[float]]:
         """Alpha Vantage 가격 수집 (분당 5회 한도 준수 — 13초 간격)."""
