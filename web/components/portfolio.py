@@ -5,7 +5,7 @@ UI는 렌더링만 한다. 계산 없음.
 """
 from __future__ import annotations
 import streamlit as st
-from web.utils.data_bridge import PortfolioViewData, AllocRow
+from web.utils.data_bridge import PortfolioViewData, AllocRow, RotationRow
 from web.styles.theme import (
     progress_bar, score_color,
     BUY_COLOR, SELL_COLOR, INFO_COLOR, HOLD_COLOR, MUTED_COLOR,
@@ -22,10 +22,74 @@ except ImportError:
 def render(data: PortfolioViewData) -> None:
     """Portfolio 탭 전체 렌더링."""
     _summary_cards(data)
+    _rotation_section(data)      # ★ 순환매 추천 배분 (최상단 강조)
     _allocation_wheel(data)
     _allocation_table(data)
     _delta_summary(data)
     _monte_carlo_card(data)
+
+
+# ── 순환매 추천 배분 ──────────────────────────────────────────────────────────
+
+def _rotation_section(d: PortfolioViewData) -> None:
+    """RS 점수 기반 순환매 추천 배분 섹션."""
+    rows = d.rotation_rows
+    if not rows:
+        return
+
+    included = [r for r in rows if r.included]
+    excluded = [r for r in rows if not r.included]
+
+    # 헤더
+    st.markdown("""
+<div class="section-hdr" style="margin-top:4px;">
+  🔄 순환매 추천 배분
+  <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px;">
+    RS ≥ 80 섹터만 선택 · RS 비례 배분 · 단일 최대 35%
+  </span>
+</div>
+""", unsafe_allow_html=True)
+
+    if not included:
+        st.info("현재 RS 80 이상 섹터 없음 — 전체 현금 보유 권장")
+        return
+
+    # 포함 섹터 카드
+    rows_html = ""
+    for r in included:
+        bar_w  = int(r.weight_pct / 35 * 100)   # 35%=100% 기준 바
+        medal  = "🥇" if r.weight_pct == max(x.weight_pct for x in included) else ""
+        rows_html += f"""
+<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;">
+  <div style="width:52px;font-weight:700;font-size:14px;color:#1e293b;">{r.ticker}</div>
+  <div style="flex:1;margin:0 10px;">
+    <div style="background:#e2e8f0;border-radius:4px;height:10px;overflow:hidden;">
+      <div style="width:{bar_w}%;background:#3b82f6;height:100%;border-radius:4px;transition:width 0.4s;"></div>
+    </div>
+  </div>
+  <div style="width:46px;text-align:right;font-weight:700;font-size:14px;color:#3b82f6;">{r.weight_pct:.1f}%</div>
+  <div style="width:28px;text-align:center;font-size:14px;">{medal}</div>
+  <div style="width:44px;text-align:right;font-size:11px;color:#64748b;">RS {r.rs_score:.0f}</div>
+</div>"""
+
+    # 제외 섹터 요약
+    excl_text = " · ".join(f"{r.ticker}({r.rs_score:.0f})" for r in excluded) if excluded else ""
+
+    st.markdown(f"""
+<div class="dss-card" style="padding:12px 16px;">
+  {rows_html}
+  {"<div style='margin-top:10px;font-size:11px;color:#94a3b8;'>제외 (RS<80): " + excl_text + "</div>" if excl_text else ""}
+</div>
+""", unsafe_allow_html=True)
+
+    # 추천 요약 문장
+    top3_names = ", ".join(r.ticker for r in included[:3])
+    st.markdown(f"""
+<div style="background:#eff6ff;border-left:3px solid #3b82f6;padding:10px 14px;
+            border-radius:0 6px 6px 0;margin:8px 0;font-size:13px;color:#1e40af;">
+  💡 현재 시장: <strong>{top3_names}</strong> 집중 — 실시간 RS 점수 반영 (FRED + yfinance)
+</div>
+""", unsafe_allow_html=True)
 
 
 # ── Summary Cards ─────────────────────────────────────────────────────────────
