@@ -47,21 +47,40 @@ log = logging.getLogger("web.app")
 
 # ── Pipeline Runner ───────────────────────────────────────────────────────────
 
+def _safe_secret(key: str) -> str:
+    """st.secrets 에서 값 안전 조회 — 키 없을 때 빈 문자열 반환."""
+    try:
+        return st.secrets.get(key, "")
+    except Exception:
+        return ""
+
+
 @st.cache_resource(ttl=300, show_spinner=False)
 def _run_pipeline() -> object:
     """
     DSS Integration Layer 실행 → DSSResult 반환.
-    실패 시 SyntheticDataLoader 기반 Demo 결과 반환.
+    API 키 있으면 LiveDataLoader(실시간), 없으면 SyntheticDataLoader(폴백).
     기존 Engine 코드 수정 없음 — 호출만 한다.
     """
     try:
         from dss_integration.monitor.engine_monitor import EngineMonitor
-        from dss_integration.data.synthetic_loader import SyntheticDataLoader
         from dss_integration.core.dss_pipeline import DSSPipeline
+
+        # ── API 키 자동 감지 ──────────────────────────────────────────
+        fred_key = os.environ.get("FRED_API_KEY", "") or _safe_secret("FRED_API_KEY")
+        av_key   = os.environ.get("ALPHA_VANTAGE_API_KEY", "") or _safe_secret("ALPHA_VANTAGE_API_KEY")
+
+        if fred_key and av_key:
+            from dss_integration.data.live_loader import LiveDataLoader
+            loader = LiveDataLoader(fred_key=fred_key, av_key=av_key)
+            log.info("Pipeline: LiveDataLoader 활성화 (FRED + Alpha Vantage)")
+        else:
+            from dss_integration.data.synthetic_loader import SyntheticDataLoader
+            loader = SyntheticDataLoader(seed=42)
+            log.warning("Pipeline: API 키 없음 — SyntheticDataLoader 폴백")
 
         run_id   = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         monitor  = EngineMonitor(run_id=run_id)
-        loader   = SyntheticDataLoader(seed=42)
         raw      = loader.load()
         pipeline = DSSPipeline(monitor=monitor, run_id=run_id)
         result   = pipeline.run(raw)
@@ -307,4 +326,44 @@ def main() -> None:
             search_result = bridge.search_etf(ticker, wl_mgr)
             search_comp.render_search_result(search_result)
 
-            # 즐겨찾기 /
+            # 즐겨찾기 / 관심 토글
+            col_fav, col_wl = st.columns(2)
+            with col_fav:
+                if search_result.found:
+                    fav_label = "⭐ 즐겨찾기 제거" if search_result.is_favorite else "☆ 즐겨찾기 추가"
+                    if st.button(fav_label, key=f"fav_{ticker}"):
+                        if search_result.is_favorite:
+                            wl_mgr.remove_favorite(ticker)
+                        else:
+                            wl_mgr.add_favorite(ticker)
+                        st.rerun()
+            with col_wl:
+                if search_result.found:
+                    wl_label = "👁️ 관심 제거" if search_result.is_watchlist else "👁 관심 추가"
+                    if st.button(wl_label, key=f"wl_{ticker}"):
+                        if search_result.is_watchlist:
+                            wl_mgr.remove_watchlist(ticker)
+                        else:
+                            wl_mgr.add_watchlist(ticker)
+                        st.rerun()
+
+        st.markdown("---")
+        search_comp.render_watchlist(bridge.watchlist_data(wl_mgr))
+
+    # ── ⚙️ System ──────────────────────────────────────────────────────────────
+    with tabs[5]:
+        system.render(bridge.system_data())
+        st.markdown("---")
+        notif_comp.render(st.session_state, result)
+
+    # ── 🔧 Diagnostics ─────────────────────────────────────────────────────────
+    with tabs[6]:
+        diagnostics_comp.render(bridge.diagnostics_data())
+        diagnostics_comp.render_op_check(bridge.daily_op_check(
+            journal_today=(today_entry is not None),
+            journal_count=len(recent_entries),
+        ))
+
+
+if __name__ == "__main__":
+    main()
