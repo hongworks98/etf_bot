@@ -63,6 +63,15 @@ class AllocRow:
 
 
 @dataclass
+class RotationRow:
+    """순환매 추천 배분 — RS 점수 기반."""
+    ticker: str
+    rs_score: float
+    weight_pct: float
+    included: bool        # RS ≥ 80 통과 여부
+
+
+@dataclass
 class PortfolioViewData:
     rows: List[AllocRow]
     cash_pct: float
@@ -74,6 +83,7 @@ class PortfolioViewData:
     top_delta_down: List[AllocRow]
     expected_return: float
     expected_vol: float
+    rotation_rows: List[RotationRow] = field(default_factory=list)  # 순환매 추천
 
 
 @dataclass
@@ -359,6 +369,9 @@ class DataBridge:
         top_up   = [r2 for r2 in rows_by_delta if r2.delta_pct > 0][:3]
         top_down = [r2 for r2 in reversed(rows_by_delta) if r2.delta_pct < 0][:3]
 
+        # ── 순환매 추천 배분 계산 ─────────────────────────────────────
+        rotation_rows = self._calc_rotation_alloc()
+
         return PortfolioViewData(
             rows=rows,
             cash_pct=round(cash * 100, 1),
@@ -370,7 +383,72 @@ class DataBridge:
             top_delta_down=top_down,
             expected_return=round(exp_ret * 100, 1),
             expected_vol=round(exp_vol * 100, 1),
+            rotation_rows=rotation_rows,
         )
+
+    def _calc_rotation_alloc(self) -> List[RotationRow]:
+        """
+        RS 점수 기반 순환매 추천 배분 계산.
+        - RS ≥ 80: 포함 (RS 비례 배분)
+        - RS < 80: 제외 (0%)
+        - 단일 섹터 최대 35% 상한
+        """
+        rs = getattr(self._r, "rs_result", None)
+        sector_results = getattr(rs, "sector_results", {}) or {}
+        if not sector_results:
+            return []
+
+        RS_THRESHOLD = 80.0
+        MAX_WEIGHT   = 0.35
+
+        rs_scores: Dict[str, float] = {
+            t: round(getattr(v, "rs_score", 0.0), 1)
+            for t, v in sector_results.items()
+        }
+
+        eligible = {t: s for t, s in rs_scores.items() if s >= RS_THRESHOLD}
+
+        if not eligible:
+            # 전부 미달이면 상위 3개만 선택
+            top3 = sorted(rs_scores.items(), key=lambda x: -x[1])[:3]
+            eligible = {t: s for t, s in top3 if s > 0}
+
+        result: List[RotationRow] = []
+
+        if eligible:
+            total_rs = sum(eligible.values())
+            raw = {t: s / total_rs for t, s in eligible.items()}
+
+            # 35% 상한 적용 (초과분 재배분)
+            weights = dict(raw)
+            for _ in range(10):  # 최대 10회 반복 재배분
+                capped   = {t: min(w, MAX_WEIGHT) for t, w in weights.items()}
+                cap_sum  = sum(capped.values())
+                if cap_sum == 0:
+                    break
+                weights = {t: w / cap_sum for t, w in capped.items()}
+                if all(w <= MAX_WEIGHT + 1e-6 for w in weights.values()):
+                    break
+
+            for t, w in sorted(weights.items(), key=lambda x: -x[1]):
+                result.append(RotationRow(
+                    ticker    = t,
+                    rs_score  = rs_scores[t],
+                    weight_pct= round(w * 100, 1),
+                    included  = True,
+                ))
+
+        # 제외된 섹터도 목록에 추가 (0%)
+        excluded = {t: s for t, s in rs_scores.items() if t not in eligible}
+        for t, s in sorted(excluded.items(), key=lambda x: -x[1]):
+            result.append(RotationRow(
+                ticker    = t,
+                rs_score  = s,
+                weight_pct= 0.0,
+                included  = False,
+            ))
+
+        return result
 
     def backtest_data(self) -> BacktestViewData:
         r   = self._r
@@ -996,5 +1074,3 @@ class DailyOpCheckViewData:
     ok_count: int
     total: int
     last_check: str   # run_date 앞 16자 or "N/A"
-
-
